@@ -1,0 +1,28 @@
+<hr>
+<h3>Tests</h3>
+#foreach($test in $tests)
+	#if ($test.status == "success")
+		#set($color = "green")
+	#elseif ($test.status == "failure" || $test.status == "error")
+		#set($color = "red")
+	#elseif ($test.status == "warning")
+		#set($color = "yellow")
+	#end
+
+	<p><b>Test: <a href="$test.url">$test.name</a></b></p>
+	<ul>
+		<li>Status:
+			<font color="$color">
+				$test.status
+			</font>
+		</li>
+	#foreach ($entry in $test.properties.entrySet())
+		#if($entry.key == "link")
+			<li><a href="$entry.value">link</a></li>
+		#end
+		#if($entry.key == "failureReason")
+			<li><p><b>Failure reason:</b> $entry.value</p></li>
+		#end
+	#end
+	</ul>
+#end

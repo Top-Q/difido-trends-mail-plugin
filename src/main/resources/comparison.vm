@@ -1,0 +1,46 @@
+<hr>
+<h3>Comparison between executions $current.id and $previous.id</h3>
+
+#set( $pass = $current.pass - $previous.pass )
+#set( $fail = $current.fail - $previous.fail )
+#set( $warning = $current.warning - $previous.warning )
+
+<p>
+#if($pass > 0)
+	#set($color = "green")
+#elseif($pass < 0)
+	#set($color = "red")
+#else
+	#set($color = "black")
+#end
+
+<font color="$color">
+Change in successful tests: $pass <br>
+</font>
+
+#if($fail > 0)
+	#set($color = "red")
+#elseif($fail < 0)
+	#set($color = "green")
+#else
+	#set($color = "black")
+#end
+
+<font color="$color">
+Change in failed tests: $fail <br>
+</font>
+
+#if($warning > 0)
+	#set($color = "yellow")
+#elseif($warning < 0)
+	#set($color = "green")
+#else
+	#set($color = "black")
+#end
+
+<font color="$color">
+Change in tests with warnings: $warning <br>
+</font>
+
+
+</p>

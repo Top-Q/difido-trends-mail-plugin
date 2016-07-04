@@ -1,0 +1,9 @@
+<h2>Execution '$description' with id $current.id has ended<h2>
+<hr>
+<h3>Summary</h3>
+<p>
+Number of pass tests: $current.pass <br>
+Number of failed tests: $current.fail <br>
+Number of tests with warnings: $current.warning <br>
+</p>
+

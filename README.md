@@ -1,0 +1,1 @@
+# difido-trends-mail-plugin

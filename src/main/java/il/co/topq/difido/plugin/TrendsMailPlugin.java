@@ -4,11 +4,13 @@ import java.io.StringWriter;
 import java.util.List;
 import java.util.Scanner;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import il.co.topq.difido.model.Enums.Status;
 import il.co.topq.report.Common;
 import il.co.topq.report.business.elastic.ESUtils;
 import il.co.topq.report.business.elastic.ElasticsearchTest;
@@ -56,22 +58,23 @@ public class TrendsMailPlugin extends DefaultMailPlugin {
 		try {
 			final int executionId = metadata.getId();
 			log.debug("About to create mail for executin with id " + executionId);
-			
+
 			final String executionType = getExecutionType(executionId);
-			log.debug("Type of execution with id " + executionId +" is " + executionType);
-			
+			log.debug("Type of execution with id " + executionId + " is " + executionType);
+
 			final ExecutionStatus currentExecutionStatus = caluculateExecutionStatuses(executionId, executionType);
-			log.debug("Status of execution with id " + executionId +" is " + currentExecutionStatus);
-			
+			log.debug("Status of execution with id " + executionId + " is " + currentExecutionStatus);
+
 			body.append(populateStatusTemplate(metadata.getDescription(), currentExecutionStatus));
 
-			if (null != executionType){
+			if (null != executionType) {
 				int previousExecutionId = findPreviousExecutionId(executionId, executionType);
 				if (0 != previousExecutionId) {
 					final ExecutionStatus previousExecutionStatus = caluculateExecutionStatuses(previousExecutionId,
 							executionType);
-					log.debug("Status of previous execution with id " + previousExecutionId +" is " + previousExecutionStatus);
-					
+					log.debug("Status of previous execution with id " + previousExecutionId + " is "
+							+ previousExecutionStatus);
+
 					body.append(populateComparisonTemplate(currentExecutionStatus, previousExecutionStatus));
 				}
 			}
@@ -83,6 +86,77 @@ public class TrendsMailPlugin extends DefaultMailPlugin {
 		}
 		return body.toString();
 
+	}
+
+	// TODO
+	ComparisonResult compareExecutions(List<ElasticsearchTest> currentTests, List<ElasticsearchTest> previousTests) {
+
+		int passToFail = 0, passToWarning = 0, failToPass = 0, failToWarning = 0, warningToPass = 0, warningToFail = 0,
+				newTests = 0, deleteTests = 0;
+		ElasticsearchTest save = null;
+
+		newTests = currentTests.size() - previousTests.size();
+		deleteTests = previousTests.size() - currentTests.size();
+
+		for (ElasticsearchTest currentTest : currentTests) {
+			for (ElasticsearchTest prevTest : previousTests) {
+				if (isTestsEquals(currentTest, prevTest)) {
+					if ((prevTest.getStatus().equals(Status.success.name()))
+							&& (currentTest.getStatus().equals(Status.failure.name()))) {
+						passToFail++;
+					} else if ((prevTest.getStatus().equals(Status.success.name()))
+							&& (currentTest.getStatus().equals(Status.warning.name()))) {
+						passToWarning++;
+					} else if ((prevTest.getStatus().equals(Status.failure.name()))
+							&& (currentTest.getStatus().equals(Status.success.name()))) {
+						failToPass++;
+					} else if ((prevTest.getStatus().equals(Status.failure.name()))
+							&& (currentTest.getStatus().equals(Status.warning.name()))) {
+						failToWarning++;
+					} else if ((prevTest.getStatus().equals(Status.warning.name()))
+							&& (currentTest.getStatus().equals(Status.success.name()))) {
+						warningToPass++;
+					} else if ((prevTest.getStatus().equals(Status.warning.name()))
+							&& (currentTest.getStatus().equals(Status.failure.name()))) {
+						warningToFail++;
+					}
+					save = prevTest;
+				}
+			}
+			if (save != null) {
+				previousTests.remove(save);
+				save = null;
+			}
+		}
+		return (new ComparisonResult(passToFail, passToWarning, failToPass, failToWarning, warningToPass, warningToFail,
+				newTests, deleteTests));
+	}
+
+	/// TO-EDIT
+	static boolean isTestsEquals(ElasticsearchTest test1, ElasticsearchTest test2) {
+		if ((test1 == null) || (test2 == null)) {
+			return false;
+		}
+		if (test1.getName() != test2.getName()) {
+			return false;
+		}
+		if ((test1.getParameters() == null) && (test2.getParameters() != null)) {
+			return false;
+		}
+		if ((test1.getParameters() != null) && (test2.getParameters() == null)) {
+			return false;
+		}
+		if ((test1.getParameters() != null) && (test2.getParameters() != null)) {
+			if (test1.getParameters().size() != test2.getParameters().size()) {
+				return false;
+			}
+			for (String key : test1.getParameters().keySet()) {
+				if (!StringUtils.equals(test1.getParameters().get(key), test2.getParameters().get(key))) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	String populateTestsTemplate(List<ElasticsearchTest> tests) {
@@ -101,7 +175,8 @@ public class TrendsMailPlugin extends DefaultMailPlugin {
 	}
 
 	String populateComparisonTemplate(ExecutionStatus currentExecutionStatus, ExecutionStatus previousExecutionStatus) {
-		log.debug("Populating comparing template for executions " + currentExecutionStatus.getId() +" and " + previousExecutionStatus.getId());
+		log.debug("Populating comparing template for executions " + currentExecutionStatus.getId() + " and "
+				+ previousExecutionStatus.getId());
 		VelocityContext context = new VelocityContext();
 		context.put("current", currentExecutionStatus);
 		context.put("previous", previousExecutionStatus);
